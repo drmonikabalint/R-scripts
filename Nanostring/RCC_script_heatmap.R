@@ -43,9 +43,10 @@ mRNA_tot  <- read.markup.RCC(rcc.path = '.')
 # default values are not explicitly written: rcc.pattern = "*.RCC|*.rcc",exclude = NULL,include = NULL,nprobes = -1
 
 # create 2 subset datasets for the 2 visit types: baseline and post-treatment.
-PFM_annotation <- read.csv2("case_study_annotations.csv",header = TRUE,sep=",")
-baseline <- subset(PFM_annotation, visit == "Baseline")
-post_treatment <- subset(PFM_annotation, visit =="Post-Treatment")
+PFM_annotation <- read.csv2("../ccbr1022_metadata.csv",header = TRUE,sep=",")
+PFM_annotation
+baseline <- subset(PFM_annotation, treatment == "pre")
+post_treatment <- subset(PFM_annotation, treatment =="post")
 mRNA_b  <- read.markup.RCC(rcc.path = 'baseline')
 mRNA_pt  <- read.markup.RCC(rcc.path = 'posttreatment')
 
@@ -92,4 +93,75 @@ RCC_heatmap <- function(output_file, input_file){
 
 # create heatmap for mRNA results.
 RCC_heatmap("mRNA_tot_heatmap.pdf", mRNA_norm)
+
+################################################################## 3.2 Data Analysis ############################################
+# Subset dataframe generated for the 2 genes of interest (CXCL1 and MCL1) 
+# mRNA_norm contains data from both baseline and post treatment visits
+
+table_CXCL1_TFRC <- data.frame(
+    patient = PFM_annotation$patient,
+    visit = PFM_annotation$treatment,
+    CXCL1 = mRNA_norm["CXCL1",],
+    TFRC = mRNA_norm["TFRC",])
+
+# Gather results from both genes under the same column
+table_tot_unite <- gather(table_CXCL1_TFRC, key = gene, value = 'results', CXCL1:TFRC)
+table_tot_unite
+# Factorize the datapoints under the column called "gene". This will be used in grouping values for ggplot 
+table_tot_unite$gene <- factor(table_tot_unite$gene)
+summary(table_tot_unite)
+
+#Generate boxplots for each gene 
+boxplot1 <- ggplot(subset(table_tot_unite, gene == "TFRC"),
+                   aes(x = visit, y = results, group = visit)) +
+    scale_fill_manual(values=c('#007A96', '#d6d925')) + 
+    scale_color_manual(values=c('#007A96', '#DFE22B')) + 
+    geom_boxplot(aes(fill=visit, color = visit, group = visit), alpha = 0.7) +
+    geom_point(aes(fill=visit, color = visit)) +
+    ggrepel::geom_text_repel(aes(label = results), size = 2.5) +
+    ggtitle("Results for CXCL1 gene by visits") +
+    theme(plot.title = element_text(hjust = 0.5), aspect.ratio = 4/4,  legend.position = 'none') +
+    scale_x_discrete(name = "")+
+    scale_y_continuous(name = "Results")
+
+boxplot2 <- ggplot(subset(table_tot_unite, gene == "CXCL1"),
+                   aes(x = visit, y = results, group = visit)) +
+    scale_fill_manual(values=c('#007A96', '#d6d925')) + 
+    scale_color_manual(values=c('#007A96', '#DFE22B')) + 
+    geom_boxplot(aes(fill=visit, color = visit, group = visit), alpha = 0.7) +
+    geom_point(aes(fill=visit, color = visit)) +
+    ggrepel::geom_text_repel(aes(label = results), size = 2.5) +
+    ggtitle("Results for TFRC gene by visits") +
+    theme(plot.title = element_text(hjust = 0.5), aspect.ratio = 4/4, legend.position = 'none') +
+    scale_x_discrete(name = "")+
+    scale_y_continuous(name = "")
+
+ggarrange(boxplot1, boxplot2, widths = c(2,2), align = 'h')
+
+#Summary for the subset tables used in each boxplot
+
+summary(subset(table_tot_unite, gene == "CXCL1"))
+summary(subset(table_tot_unite, gene == "TFRC"))
+
+################################## 3.3 Data Reporting ###########################################
+# Additional data explorations with ggplot-barplot 
+# CXCL1 and MCL1 values by patient
+
+barplot1 <- ggplot(subset(table_tot_unite, gene == "TFRC"), 
+                   aes(x=patient, y = results, fill = visit)) + 
+    geom_bar(stat="identity",position=position_dodge(), colour="lightgrey") + 
+    labs (x= "Patient", y = "Results for TFRC") + 
+    scale_fill_manual(values=c('#007A96', '#DFE22B')) +
+    ggtitle("TFRC - results by patient") +
+    theme(plot.title = element_text(hjust = 0.5),  legend.position = 'bottom', aspect.ratio = 4/4)
+
+barplot2 <- ggplot(subset(table_tot_unite, gene == "CXCL1"), 
+                   aes(x=patient, y = results, fill = visit)) + 
+    geom_bar(stat="identity", position=position_dodge(), colour="lightgrey") + 
+    labs (x= "Patient", y = "Results for CXCL1") + 
+    scale_fill_manual(values=c('#007A96', '#DFE22B')) +
+    ggtitle("CXCL1 - results by patient") +
+    theme(plot.title = element_text(hjust = 0.5), legend.position = 'none', aspect.ratio = 4/4)
+
+ggarrange(barplot1, barplot2, common.legend = TRUE, legend="bottom")
 
