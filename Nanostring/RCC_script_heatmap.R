@@ -71,28 +71,46 @@ mRNA_tot[2]
 ################################################################## 3.1 Data Quality ##############################################
 
 # Generate heatmap. 
-#To generate heatmap, and transpose the mRNA matrix, with positive and negative genes in the column, 
+#To generate heatmap, and transpose the mRNA matrix, with positive and negative control genes in the column, 
 # and the samples are in row, we use the transpose function (t).
+
+# Filter the Positive and Negative controls
+filter_pos_neg <- function(RNA_input, matrix_format){
+    data <- RNA_input$x
+    datacontrols <- subset(data, CodeClass %in% c("Positive","Negative"))
+    name=datacontrols[2:2]
+    datacontrols_log <- log10(datacontrols[matrix_format])
+}
+
+positive_negative <- filter_pos_neg(mRNA_tot, 13:4)
+positive_negative_b <- filter_pos_neg(mRNA_b, 8:4)
+positive_negative_pt <- filter_pos_neg(mRNA_pt, 8:4)
+positive_negative
+
 
 library("RColorBrewer")
 col_heat <- grDevices::hcl.colors(20, "viridis")
 
 # create function RCC_heatmap, to avoid copy-pasting code
-RCC_heatmap <- function(output_file, input_file){
+RCC_heatmap <- function(output_file, input_file, col_name){
     pdf(output_file, width=10, height=10)    
     heatmap.2(
         t(input_file),  
         col = col_heat, 
         trace = "none",  
         cexRow = 0.8, 
-        scale="none",
-        margins=c(4,13)
+        margins=c(8,13),
+        labCol = col_name
     )
     dev.off()
 }
-
-# create heatmap for mRNA results.
-RCC_heatmap("mRNA_tot_heatmap.pdf", mRNA_norm)
+# create heatmap for mRNA results using 3 datasets.
+# first contains all data
+# second contains data from baseline visit
+# third contains data from post-treatment visit
+RCC_heatmap("mRNA_tot_control_heatmap_2.pdf", positive_negative, name$Name)
+RCC_heatmap("mRNA_tot_heatmap_b.pdf", positive_negative_b, name$Name)
+RCC_heatmap("mRNA_tot_heatmap_pt.pdf", positive_negative_pt, name$Name)
 
 ################################################################## 3.2 Data Analysis ############################################
 # Subset dataframe generated for the 2 genes of interest (CXCL1 and MCL1) 
